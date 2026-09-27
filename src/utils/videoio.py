@@ -1,9 +1,13 @@
 import shutil
+import subprocess
 import uuid
 
 import os
 
 import cv2
+import imageio_ffmpeg
+
+FFMPEG_EXE = imageio_ffmpeg.get_ffmpeg_exe()
 
 def load_video_to_cv2(input_path):
     video_stream = cv2.VideoCapture(input_path)
@@ -18,9 +22,14 @@ def load_video_to_cv2(input_path):
     return full_frames
 
 def save_video_with_watermark(video, audio, save_path, watermark=False):
-    temp_file = str(uuid.uuid4())+'.mp4'
-    cmd = r'ffmpeg -y -hide_banner -loglevel error -i "%s" -i "%s" -vcodec copy "%s"' % (video, audio, temp_file)
-    os.system(cmd)
+    temp_file = os.path.abspath(str(uuid.uuid4())+'.mp4')
+    video = os.path.abspath(video)
+    audio = os.path.abspath(audio)
+    subprocess.run(
+        [FFMPEG_EXE, '-y', '-hide_banner', '-loglevel', 'error',
+         '-i', video, '-i', audio, '-vcodec', 'copy', temp_file],
+        check=True,
+    )
 
     if watermark is False:
         shutil.move(temp_file, save_path)
@@ -36,6 +45,11 @@ def save_video_with_watermark(video, audio, save_path, watermark=False):
             dir_path = os.path.dirname(os.path.realpath(__file__))
             watarmark_path = dir_path+"/../../docs/sadtalker_logo.png"
 
-        cmd = r'ffmpeg -y -hide_banner -loglevel error -i "%s" -i "%s" -filter_complex "[1]scale=100:-1[wm];[0][wm]overlay=(main_w-overlay_w)-10:10" "%s"' % (temp_file, watarmark_path, save_path)
-        os.system(cmd)
+        subprocess.run(
+            [FFMPEG_EXE, '-y', '-hide_banner', '-loglevel', 'error',
+             '-i', temp_file, '-i', os.path.abspath(watarmark_path),
+             '-filter_complex', '[1]scale=100:-1[wm];[0][wm]overlay=(main_w-overlay_w)-10:10',
+             os.path.abspath(save_path)],
+            check=True,
+        )
         os.remove(temp_file)

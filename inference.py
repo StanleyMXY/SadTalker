@@ -5,6 +5,15 @@ from time import  strftime
 import os, sys, time
 from argparse import ArgumentParser
 
+# Newer PyTorch defaults torch.load(weights_only=True), which breaks unpickling
+# these older (2022-era) SadTalker checkpoints. We trust this checkpoint source
+# (official HuggingFace-hosted weights), so force the old, permissive default.
+_torch_load_orig = torch.load
+def _torch_load_patched(*args, **kwargs):
+    kwargs.setdefault('weights_only', False)
+    return _torch_load_orig(*args, **kwargs)
+torch.load = _torch_load_patched
+
 from src.utils.preprocess import CropAndExtract
 from src.test_audio2coeff import Audio2Coeff  
 from src.facerender.animate import AnimateFromCoeff
